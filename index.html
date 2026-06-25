@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Recorrido Interactivo Mascotas - Evento Corporativo</title>
+    <meta name="description" content="Juego interactivo de mascotas para concientización sobre previsión y protección vital.">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Phaser.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Contenedor del Canvas de Phaser -->
+        <div id="game-container"></div>
+
+        <!-- Pantalla de Carga Inicial -->
+        <div id="loader-screen" class="ui-overlay">
+            <div class="card">
+                <div class="logo-container">
+                    <div class="logo-placeholder">🐾</div>
+                </div>
+                <h1>Cargando Experiencia</h1>
+                <p class="subtitle">Preparando el recorrido interactivo corporativo...</p>
+                <div class="loader-bar-container">
+                    <div id="loader-progress" class="loader-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de Registro de Participante (Antes del inicio) -->
+        <div id="register-screen" class="ui-overlay hidden">
+            <div class="card">
+                <div class="logo-container">
+                    <div class="logo-placeholder">🏠</div>
+                </div>
+                <h1>Registro de Participante</h1>
+                <p class="subtitle">Ingresa tus datos para iniciar el viaje de tu mascota</p>
+                
+                <form id="register-form" onsubmit="event.preventDefault(); startRegistration();">
+                    <div class="form-group">
+                        <label for="reg-name">Nombre Completo</label>
+                        <input type="text" id="reg-name" class="input-control" required placeholder="Ej. Juan Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Correo Electrónico</label>
+                        <input type="email" id="reg-email" class="input-control" required placeholder="correo@empresa.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-phone">Teléfono de Contacto</label>
+                        <input type="tel" id="reg-phone" class="input-control" required placeholder="Ej. +57 300 123 4567">
+                    </div>
+                    <button type="submit" class="btn-primary" id="btn-submit-reg">Comenzar Aventura</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Modulares -->
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="game.js"></script>
+    
+    <script>
+        // Control de interfaces HTML
+        window.addEventListener('load', () => {
+            // Simular carga de recursos iniciales rápidamente
+            const progress = document.getElementById('loader-progress');
+            let width = 0;
+            const interval = setInterval(() => {
+                width += 10;
+                progress.style.width = width + '%';
+                if (width >= 100) {
+                    clearInterval(interval);
+                    // Ocultamos loader y mostramos registro
+                    document.getElementById('loader-screen').classList.add('hidden');
+                    document.getElementById('register-screen').classList.remove('hidden');
+                }
+            }, 100);
+        });
+
+        function startRegistration() {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const phone = document.getElementById('reg-phone').value;
+
+            // Almacenar temporalmente los datos del participante
+            window.userData = {
+                name: name,
+                email: email,
+                phone: phone,
+                avatar: '',
+                path: '',
+                duration: 0,
+                startTime: Date.now()
+            };
+
+            // Ocultar pantalla de registro
+            document.getElementById('register-screen').classList.add('hidden');
+            
+            // Iniciar el juego en Phaser (o notificar que empiece)
+            if (window.gameInstance) {
+                window.gameInstance.scene.keys['SelectionScene'].startSelection();
+            }
+        }
+    </script>
+</body>
+</html>
