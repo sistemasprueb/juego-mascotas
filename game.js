@@ -1,9 +1,10 @@
 /**
  * game.js
- * Lógica principal del juego desarrollada con Phaser.js.
+ * Código del Portal Multijuegos Comunidad del Conocimiento.
+ * Desarrollado con Phaser.js, con gráficos vectoriales y sintetizador de SFX.
  */
 
-// Sintetizador de audio simple para efectos de sonido (SFX) sin requerir archivos externos
+// Sintetizador Web Audio API para efectos sonoros interactivos
 const SoundSynth = {
     ctx: null,
 
@@ -11,7 +12,7 @@ const SoundSynth = {
         try {
             this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         } catch (e) {
-            console.warn("Web Audio API no soportada en este navegador.");
+            console.warn("AudioContext no soportado.");
         }
     },
 
@@ -19,29 +20,27 @@ const SoundSynth = {
         if (!this.ctx) this.init();
         if (!this.ctx) return;
         
-        // Oscilador para sonido de click/selección rápido y amigable
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.connect(gain);
         gain.connect(this.ctx.destination);
 
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(350, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 0.08);
 
         gain.gain.setValueAtTime(window.CONFIG.AUDIO.sfxVolume, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
 
         osc.start();
-        osc.stop(this.ctx.currentTime + 0.15);
+        osc.stop(this.ctx.currentTime + 0.1);
     },
 
     playSuccess() {
         if (!this.ctx) this.init();
         if (!this.ctx) return;
 
-        // Fanfarria de éxito (tres notas ascendentes alegres)
-        const notes = [440, 554, 659, 880];
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // Acorde de Do Mayor ascendente
         notes.forEach((freq, idx) => {
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
@@ -49,189 +48,150 @@ const SoundSynth = {
             gain.connect(this.ctx.destination);
 
             osc.type = 'triangle';
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.1);
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
 
-            gain.gain.setValueAtTime(window.CONFIG.AUDIO.sfxVolume, this.ctx.currentTime + idx * 0.1);
-            gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.1 + 0.25);
+            gain.gain.setValueAtTime(window.CONFIG.AUDIO.sfxVolume, this.ctx.currentTime + idx * 0.08);
+            gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.08 + 0.2);
 
-            osc.start(this.ctx.currentTime + idx * 0.1);
-            osc.stop(this.ctx.currentTime + idx * 0.1 + 0.35);
+            osc.start(this.ctx.currentTime + idx * 0.08);
+            osc.stop(this.ctx.currentTime + idx * 0.08 + 0.25);
         });
+    },
+
+    playError() {
+        if (!this.ctx) this.init();
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(90, this.ctx.currentTime + 0.25);
+
+        gain.gain.setValueAtTime(window.CONFIG.AUDIO.sfxVolume, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.25);
     }
 };
 
-// Escena de Arranque y Selección de Avatar
+// ==========================================
+// 1. JUEGO: CAMINO SEGURO (Mascotas)
+// ==========================================
 class SelectionScene extends Phaser.Scene {
     constructor() {
         super({ key: 'SelectionScene' });
     }
 
     create() {
-        // Inicializar el estado
-        this.selectedAvatar = null;
-        this.isActive = false;
-
-        // Título corporativo
-        this.titleText = this.add.text(512, 100, 'Elige tu Mascota', {
-            fontFamily: 'Outfit',
-            fontSize: '48px',
-            fontWeight: '800',
-            color: '#0f172a'
-        }).setOrigin(0.5);
-
-        this.subtitleText = this.add.text(512, 160, 'Elige el avatar que te acompañará en tu viaje seguro a casa', {
-            fontFamily: 'Outfit',
-            fontSize: '20px',
-            color: '#64748b'
-        }).setOrigin(0.5);
-
-        // Crear contenedores e interactividad para Perro y Gato usando Phaser Graphics
-        this.createAvatarOption(280, 380, 'dog', 'Perro', 0xffb74d, 0xffa726);
-        this.createAvatarOption(744, 380, 'cat', 'Gato', 0x90caf9, 0x64b5f6);
-
-        // Ocultar elementos de la escena hasta que el usuario se registre
-        this.cameras.main.fadeOut(0, 0, 0, 0);
-    }
-
-    startSelection() {
         this.isActive = true;
-        this.cameras.main.fadeIn(500);
+
+        this.add.text(512, 80, 'Elige tu Mascota', {
+            fontFamily: 'Comfortaa',
+            fontSize: '44px',
+            color: '#2AAD9A',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+
+        this.add.text(512, 140, 'Elige el avatar que guiarás a casa en tu camino seguro', {
+            fontFamily: 'Raleway',
+            fontSize: '18px',
+            color: '#333333'
+        }).setOrigin(0.5);
+
+        this.createAvatarOption(280, 380, 'dog', 'Perro', 0xEDBF6D, 0x2AAD9A);
+        this.createAvatarOption(744, 380, 'cat', 'Gato', 0x59AC9E, 0x2AAD9A);
     }
 
     createAvatarOption(x, y, id, name, baseColor, activeColor) {
-        const width = 300;
-        const height = 300;
-
-        // Contenedor principal de la tarjeta de opción
+        const width = 280;
+        const height = 280;
         const container = this.add.container(x, y);
 
-        // Fondo de tarjeta
         const bg = this.add.graphics();
         bg.fillStyle(0xffffff, 1);
-        bg.fillRoundedRect(-width/2, -height/2, width, height, 24);
+        bg.fillRoundedRect(-width/2, -height/2, width, height, 20);
         bg.lineStyle(2, 0xe2e8f0);
-        bg.strokeRoundedRect(-width/2, -height/2, width, height, 24);
+        bg.strokeRoundedRect(-width/2, -height/2, width, height, 20);
         container.add(bg);
 
-        // Dibujo de la mascota (Perro o Gato simplificado con vectores)
         const petGraphics = this.add.graphics();
         if (id === 'dog') {
-            // Perro: Cabeza, orejas caídas, ojos, nariz
             petGraphics.fillStyle(baseColor, 1);
-            petGraphics.fillCircle(0, -20, 60); // Cabeza
-            
-            petGraphics.fillStyle(0x8d6e63, 1); // Orejas caídas
-            petGraphics.fillEllipse(-60, -30, 30, 70);
-            petGraphics.fillEllipse(60, -30, 30, 70);
-
-            petGraphics.fillStyle(0xffffff, 1); // Ojos
-            petGraphics.fillCircle(-20, -30, 12);
-            petGraphics.fillCircle(20, -30, 12);
+            petGraphics.fillCircle(0, -20, 50);
+            petGraphics.fillStyle(0x8d6e63, 1);
+            petGraphics.fillEllipse(-50, -30, 20, 60);
+            petGraphics.fillEllipse(50, -30, 20, 60);
+            petGraphics.fillStyle(0xffffff, 1);
+            petGraphics.fillCircle(-15, -25, 10);
+            petGraphics.fillCircle(15, -25, 10);
             petGraphics.fillStyle(0x000000, 1);
-            petGraphics.fillCircle(-20, -30, 6);
-            petGraphics.fillCircle(20, -30, 6);
-
-            petGraphics.fillStyle(0x3e2723, 1); // Nariz
-            petGraphics.fillTriangle(-12, -10, 12, -10, 0, 5);
+            petGraphics.fillCircle(-15, -25, 5);
+            petGraphics.fillCircle(15, -25, 5);
+            petGraphics.fillStyle(0x3e2723, 1);
+            petGraphics.fillTriangle(-10, -5, 10, -5, 0, 8);
         } else {
-            // Gato: Cabeza, orejas puntiagudas, bigotes, ojos
             petGraphics.fillStyle(baseColor, 1);
-            petGraphics.fillCircle(0, -20, 60); // Cabeza
-
-            petGraphics.fillStyle(activeColor, 1); // Orejas puntiagudas
-            petGraphics.fillTriangle(-55, -55, -20, -75, -15, -45);
-            petGraphics.fillTriangle(55, -55, 20, -75, 15, -45);
-
-            petGraphics.fillStyle(0xffffff, 1); // Ojos
-            petGraphics.fillCircle(-20, -30, 12);
-            petGraphics.fillCircle(20, -30, 12);
+            petGraphics.fillCircle(0, -20, 50);
+            petGraphics.fillTriangle(-45, -45, -15, -60, -10, -35);
+            petGraphics.fillTriangle(45, -45, 15, -60, 10, -35);
+            petGraphics.fillStyle(0xffffff, 1);
+            petGraphics.fillCircle(-15, -25, 10);
+            petGraphics.fillCircle(15, -25, 10);
             petGraphics.fillStyle(0x000000, 1);
-            petGraphics.fillCircle(-20, -30, 6);
-            petGraphics.fillCircle(20, -30, 6);
-
-            petGraphics.fillStyle(0xf48fb1, 1); // Nariz
-            petGraphics.fillTriangle(-8, -10, 8, -10, 0, -3);
-
-            // Bigotes
-            petGraphics.lineStyle(2, 0x000000, 0.4);
-            petGraphics.lineBetween(-30, -5, -60, -10);
-            petGraphics.lineBetween(-30, 0, -60, 0);
-            petGraphics.lineBetween(30, -5, 60, -10);
-            petGraphics.lineBetween(30, 0, 60, 0);
+            petGraphics.fillCircle(-15, -25, 5);
+            petGraphics.fillCircle(15, -25, 5);
+            petGraphics.fillStyle(0xf48fb1, 1);
+            petGraphics.fillTriangle(-6, -5, 6, -5, 0, -1);
         }
         container.add(petGraphics);
 
-        // Nombre del avatar
-        const label = this.add.text(0, 100, name, {
-            fontFamily: 'Outfit',
-            fontSize: '32px',
-            fontWeight: '600',
-            color: '#0f172a'
+        const label = this.add.text(0, 90, name, {
+            fontFamily: 'Comfortaa',
+            fontSize: '28px',
+            color: '#333333',
+            fontWeight: 'bold'
         }).setOrigin(0.5);
         container.add(label);
 
-        // Hacer la opción táctil / interactiva
-        const hitArea = new Phaser.Geom.Rectangle(-width/2, -height/2, width, height);
-        bg.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
+        bg.setInteractive(new Phaser.Geom.Rectangle(-width/2, -height/2, width, height), Phaser.Geom.Rectangle.Contains);
 
         bg.on('pointerover', () => {
             if (!this.isActive) return;
-            this.tweens.add({
-                targets: container,
-                scaleX: 1.05,
-                scaleY: 1.05,
-                duration: 200,
-                ease: 'Back.easeOut'
-            });
-            bg.clear();
-            bg.fillStyle(0xffffff, 1);
-            bg.fillRoundedRect(-width/2, -height/2, width, height, 24);
-            bg.lineStyle(4, activeColor);
-            bg.strokeRoundedRect(-width/2, -height/2, width, height, 24);
+            this.tweens.add({ targets: container, scale: 1.05, duration: 150 });
+            bg.clear().fillStyle(0xffffff, 1).fillRoundedRect(-width/2, -height/2, width, height, 20).lineStyle(4, activeColor).strokeRoundedRect(-width/2, -height/2, width, height, 20);
         });
 
         bg.on('pointerout', () => {
-            this.tweens.add({
-                targets: container,
-                scaleX: 1.0,
-                scaleY: 1.0,
-                duration: 200,
-                ease: 'Power2'
-            });
-            bg.clear();
-            bg.fillStyle(0xffffff, 1);
-            bg.fillRoundedRect(-width/2, -height/2, width, height, 24);
-            bg.lineStyle(2, 0xe2e8f0);
-            bg.strokeRoundedRect(-width/2, -height/2, width, height, 24);
+            this.tweens.add({ targets: container, scale: 1.0, duration: 150 });
+            bg.clear().fillStyle(0xffffff, 1).fillRoundedRect(-width/2, -height/2, width, height, 20).lineStyle(2, 0xe2e8f0).strokeRoundedRect(-width/2, -height/2, width, height, 20);
         });
 
         bg.on('pointerdown', () => {
             if (!this.isActive) return;
-            this.isActive = false; // Bloquear múltiples clicks
-            this.selectedAvatar = id;
-            window.userData.avatar = id;
-            
+            this.isActive = false;
             SoundSynth.playSelect();
+            
+            // Guardar avatar
+            window.userData.gameDetails = `Avatar: ${name}`;
 
-            // Animación de selección
             this.tweens.add({
                 targets: container,
-                scaleX: 1.15,
-                scaleY: 1.15,
-                yoyo: true,
+                scale: 1.15,
                 duration: 150,
+                yoyo: true,
                 onComplete: () => {
-                    this.cameras.main.fadeOut(500);
-                    this.cameras.main.once('camerafadeoutcomplete', () => {
-                        this.scene.start('GameScene', { avatar: id });
-                    });
+                    this.scene.start('GameScene', { avatar: id });
                 }
             });
         });
     }
 }
 
-// Escena del Recorrido e Interacción
 class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
@@ -244,288 +204,148 @@ class GameScene extends Phaser.Scene {
     create() {
         this.isBifurcated = false;
         
-        // Crear Fondo Dinámico
-        this.sky = this.add.graphics();
-        this.sky.fillGradientStyle(0xe0f2fe, 0xe0f2fe, 0xbae6fd, 0xbae6fd, 1);
-        this.sky.fillRect(0, 0, 1024, 768);
+        // Fondo Cielo y Suelo Corporativos
+        this.add.graphics().fillGradientStyle(0xF5F7F6, 0xF5F7F6, 0xD4EDE9, 0xD4EDE9, 1).fillRect(0, 0, 1024, 768);
+        this.add.graphics().fillStyle(0x3CB99F, 1).fillRect(0, 500, 1024, 268);
 
-        // Colinas del fondo para efecto de Scroll Parallax
-        this.hills = this.add.graphics();
-        this.hills.fillStyle(0xa7f3d0, 1); // Verde suave
-        this.hills.fillEllipse(300, 500, 800, 300);
-        this.hills.fillEllipse(800, 520, 900, 320);
+        // Casa
+        this.house = this.add.container(900, 440);
+        const hg = this.add.graphics();
+        hg.fillStyle(0xffffff, 1).fillRect(-50, 0, 100, 70);
+        hg.fillStyle(0xEF607A, 1).fillTriangle(-60, 0, 60, 0, 0, -40);
+        hg.fillStyle(0x333333, 1).fillRect(-15, 30, 30, 40);
+        this.house.add(hg);
 
-        // Suelo firme
-        this.ground = this.add.graphics();
-        this.ground.fillStyle(0x34d399, 1);
-        this.ground.fillRect(0, 500, 1024, 268);
-
-        // Sol en el fondo
-        this.sun = this.add.graphics();
-        this.sun.fillStyle(0xfef08a, 0.8);
-        this.sun.fillCircle(100, 100, 60);
-
-        // Hogar del personaje (meta a lo lejos)
-        this.createHouse();
-
-        // Crear Personaje
-        this.characterContainer = this.add.container(150, 480);
+        // Personaje
+        this.character = this.add.container(150, 480);
         this.drawCharacter();
 
-        // Iniciar Animación de Caminado Ficticio (Balanceo suave)
         this.walkTween = this.tweens.add({
-            targets: this.characterContainer,
-            y: 470,
-            angle: 2,
+            targets: this.character,
+            y: 472,
+            angle: 3,
             yoyo: true,
             repeat: -1,
-            duration: 250,
+            duration: 200,
             ease: 'Sine.easeInOut'
         });
 
-        // Simulación de movimiento del fondo avanzando suavemente hacia la derecha (izquierda relativa)
-        // Programaremos el avance de la cámara y el fondo
+        // Avance inicial
         this.tweens.add({
-            targets: this.characterContainer,
+            targets: this.character,
             x: 400,
-            duration: 3500,
+            duration: 3000,
             ease: 'Power1.easeOut',
             onComplete: () => {
-                this.triggerBifurcation();
+                this.walkTween.stop();
+                this.showBifurcation();
             }
         });
     }
 
-    createHouse() {
-        this.houseContainer = this.add.container(900, 430);
-        const houseG = this.add.graphics();
-
-        // Base/Paredes de la casa
-        houseG.fillStyle(0xf8fafc, 1);
-        houseG.fillRect(-60, 0, 120, 90);
-        
-        // Techo
-        houseG.fillStyle(0xf43f5e, 1);
-        houseG.fillTriangle(-70, 0, 70, 0, 0, -50);
-
-        // Puerta
-        houseG.fillStyle(0x64748b, 1);
-        houseG.fillRect(-20, 40, 40, 50);
-
-        // Ventana
-        houseG.fillStyle(0x38bdf8, 1);
-        houseG.fillRect(25, 20, 20, 20);
-
-        this.houseContainer.add(houseG);
-    }
-
     drawCharacter() {
         const body = this.add.graphics();
-        const baseColor = this.avatarType === 'dog' ? 0xffb74d : 0x90caf9;
-        
-        // Cuerpo básico de la mascota de perfil
-        body.fillStyle(baseColor, 1);
-        body.fillRoundedRect(-35, -20, 70, 40, 10); // Cuerpo
-
-        // Cabeza
-        body.fillCircle(25, -25, 22);
-
-        // Patas
-        body.fillStyle(0x000000, 0.15);
-        body.fillRect(-25, 20, 10, 12);
-        body.fillRect(15, 20, 10, 12);
-        body.fillStyle(baseColor, 1);
-        body.fillRect(-20, 20, 10, 12);
-        body.fillRect(10, 20, 10, 12);
-
-        if (this.avatarType === 'dog') {
-            // Orejas caídas
-            body.fillStyle(0x8d6e63, 1);
-            body.fillEllipse(15, -20, 10, 25);
-            // Cola
-            body.fillStyle(baseColor, 1);
-            body.fillEllipse(-38, -15, 8, 20);
-        } else {
-            // Orejas puntiagudas
-            body.fillStyle(0x64b5f6, 1);
-            body.fillTriangle(10, -42, 20, -52, 25, -42);
-            // Cola levantada
-            body.fillStyle(baseColor, 1);
-            body.fillEllipse(-38, -25, 8, 25);
-        }
-
-        // Ojo
-        body.fillStyle(0xffffff, 1);
-        body.fillCircle(30, -28, 5);
-        body.fillStyle(0x000000, 1);
-        body.fillCircle(31, -28, 2);
-
-        this.characterContainer.add(body);
+        const baseColor = this.avatarType === 'dog' ? 0xEDBF6D : 0x59AC9E;
+        body.fillStyle(baseColor, 1).fillRoundedRect(-30, -20, 60, 36, 10);
+        body.fillCircle(20, -25, 18);
+        body.fillStyle(0x333333, 1).fillCircle(25, -28, 3); // Ojo
+        this.character.add(body);
     }
 
-    triggerBifurcation() {
-        if (this.isBifurcated) return;
-        this.isBifurcated = true;
-        
-        // Detener caminado
-        this.walkTween.stop();
-
-        // Mostrar textos de los caminos
-        this.showBifurcationUI();
-    }
-
-    showBifurcationUI() {
-        // Título de la Bifurcación
-        this.decisionTitle = this.add.text(512, 100, '¿Qué camino deseas tomar para tu hogar?', {
-            fontFamily: 'Outfit',
-            fontSize: '36px',
-            fontWeight: '800',
-            color: '#0f172a'
+    showBifurcation() {
+        this.decisionTitle = this.add.text(512, 100, 'Toma una decisión para tu hogar', {
+            fontFamily: 'Comfortaa',
+            fontSize: '32px',
+            fontWeight: 'bold',
+            color: '#2AAD9A'
         }).setOrigin(0.5);
 
-        // Crear Botones de Caminos
-        this.createPathButton(280, 300, 1, window.CONFIG.PATHS.PATH_1);
-        this.createPathButton(744, 300, 2, window.CONFIG.PATHS.PATH_2);
+        this.createPathButton(280, 280, 1, window.CONFIG.GAMES.PETS.paths.PATH_1);
+        this.createPathButton(744, 280, 2, window.CONFIG.GAMES.PETS.paths.PATH_2);
     }
 
     createPathButton(x, y, id, pathData) {
-        const width = 400;
-        const height = 240;
-
+        const width = 380;
+        const height = 200;
         const container = this.add.container(x, y);
 
         const bg = this.add.graphics();
-        bg.fillStyle(0xffffff, 0.95);
-        bg.fillRoundedRect(-width/2, -height/2, width, height, 20);
-        bg.lineStyle(3, 0xe2e8f0);
-        bg.strokeRoundedRect(-width/2, -height/2, width, height, 20);
+        bg.fillStyle(0xffffff, 0.95).fillRoundedRect(-width/2, -height/2, width, height, 16);
+        bg.lineStyle(3, 0xe2e8f0).strokeRoundedRect(-width/2, -height/2, width, height, 16);
         container.add(bg);
 
-        // Franja de Color Superior
-        const headerG = this.add.graphics();
-        headerG.fillStyle(pathData.color, 1);
-        headerG.fillRoundedRect(-width/2, -height/2, width, 50, { tl: 20, tr: 20, bl: 0, br: 0 });
-        container.add(headerG);
-
-        // Título
-        const title = this.add.text(0, -height/2 + 25, pathData.title.toUpperCase(), {
-            fontFamily: 'Outfit',
-            fontSize: '22px',
-            fontWeight: '800',
-            color: '#ffffff'
+        const title = this.add.text(0, -60, pathData.title.toUpperCase(), {
+            fontFamily: 'Comfortaa',
+            fontSize: '20px',
+            color: pathData.color,
+            fontWeight: 'bold'
         }).setOrigin(0.5);
         container.add(title);
 
-        // Descripción envuelta
-        const descText = this.add.text(0, 30, pathData.description, {
-            fontFamily: 'Outfit',
-            fontSize: '16px',
-            color: '#334155',
+        const desc = this.add.text(0, 15, pathData.description, {
+            fontFamily: 'Raleway',
+            fontSize: '15px',
+            color: '#333333',
             align: 'center',
-            wordWrap: { width: width - 40, useAdvancedWrap: true }
+            wordWrap: { width: width - 40 }
         }).setOrigin(0.5);
-        container.add(descText);
+        container.add(desc);
 
-        // Interactividad
-        const hitArea = new Phaser.Geom.Rectangle(-width/2, -height/2, width, height);
-        bg.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
+        bg.setInteractive(new Phaser.Geom.Rectangle(-width/2, -height/2, width, height), Phaser.Geom.Rectangle.Contains);
 
         bg.on('pointerover', () => {
-            this.tweens.add({
-                targets: container,
-                scaleX: 1.03,
-                scaleY: 1.03,
-                duration: 150
-            });
-            bg.clear();
-            bg.fillStyle(0xffffff, 1);
-            bg.fillRoundedRect(-width/2, -height/2, width, height, 20);
-            bg.lineStyle(4, pathData.color);
-            bg.strokeRoundedRect(-width/2, -height/2, width, height, 20);
+            this.tweens.add({ targets: container, scale: 1.03, duration: 150 });
+            bg.clear().fillStyle(0xffffff, 1).fillRoundedRect(-width/2, -height/2, width, height, 16).lineStyle(4, pathData.color).strokeRoundedRect(-width/2, -height/2, width, height, 16);
         });
 
         bg.on('pointerout', () => {
-            this.tweens.add({
-                targets: container,
-                scaleX: 1.0,
-                scaleY: 1.0,
-                duration: 150
-            });
-            bg.clear();
-            bg.fillStyle(0xffffff, 0.95);
-            bg.fillRoundedRect(-width/2, -height/2, width, height, 20);
-            bg.lineStyle(3, 0xe2e8f0);
-            bg.strokeRoundedRect(-width/2, -height/2, width, height, 20);
+            this.tweens.add({ targets: container, scale: 1.0, duration: 150 });
+            bg.clear().fillStyle(0xffffff, 0.95).fillRoundedRect(-width/2, -height/2, width, height, 16).lineStyle(3, 0xe2e8f0).strokeRoundedRect(-width/2, -height/2, width, height, 16);
         });
 
         bg.on('pointerdown', () => {
-            this.selectPath(id, pathData);
-        });
-
-        // Registrar para eliminación rápida posterior
-        if (!this.buttonsList) this.buttonsList = [];
-        this.buttonsList.push(container);
-    }
-
-    selectPath(id, pathData) {
-        SoundSynth.playSelect();
-        
-        // Registrar camino y calcular duración
-        window.userData.path = pathData.title;
-        window.userData.duration = Math.round((Date.now() - window.userData.startTime) / 1000);
-
-        // Desvanecer botones y título
-        this.buttonsList.forEach(btn => {
+            SoundSynth.playSelect();
+            window.userData.gameDetails += `, Decisión: ${pathData.title}`;
+            
+            // Eliminar paneles
+            if (!this.fadeList) this.fadeList = [];
+            this.fadeList.push(container);
+            
             this.tweens.add({
-                targets: btn,
+                targets: [container, this.decisionTitle],
                 alpha: 0,
-                scaleX: 0.8,
-                scaleY: 0.8,
-                duration: 300
+                duration: 300,
+                onComplete: () => {
+                    this.characterWalkHome();
+                }
             });
         });
+    }
 
-        this.tweens.add({
-            targets: this.decisionTitle,
-            alpha: 0,
-            duration: 300
-        });
-
-        // Reanudar caminata alegre hacia la casa
+    characterWalkHome() {
         this.walkTween = this.tweens.add({
-            targets: this.characterContainer,
-            y: 470,
-            angle: 5,
+            targets: this.character,
+            y: 472,
+            angle: 4,
             yoyo: true,
             repeat: -1,
-            duration: 180,
-            ease: 'Sine.easeInOut'
+            duration: 150
         });
 
-        // Animación del personaje avanzando seguro al hogar
         this.tweens.add({
-            targets: this.characterContainer,
+            targets: this.character,
             x: 820,
-            y: 480,
-            duration: 2500,
-            ease: 'Quad.easeInOut',
+            duration: 2000,
             onComplete: () => {
                 this.walkTween.stop();
-                this.characterContainer.setAngle(0);
-                
-                // Animación de entrada feliz a la casa (escalado hacia 0)
                 this.tweens.add({
-                    targets: this.characterContainer,
-                    scaleX: 0,
-                    scaleY: 0,
+                    targets: this.character,
+                    scale: 0,
                     x: 900,
                     duration: 500,
                     onComplete: () => {
                         SoundSynth.playSuccess();
-                        this.cameras.main.fadeOut(500);
-                        this.cameras.main.once('camerafadeoutcomplete', () => {
-                            this.scene.start('EndScene');
-                        });
+                        this.scene.start('EndPortalScene');
                     }
                 });
             }
@@ -533,149 +353,596 @@ class GameScene extends Phaser.Scene {
     }
 }
 
-// Escena de Pantalla Final
-class EndScene extends Phaser.Scene {
+// ==========================================
+// 2. JUEGO: ARMAR PALABRAS (Word Builder)
+// ==========================================
+class WordScene extends Phaser.Scene {
     constructor() {
-        super({ key: 'EndScene' });
+        super({ key: 'WordScene' });
     }
 
     create() {
-        this.cameras.main.fadeIn(500);
+        this.wordsList = window.CONFIG.GAMES.WORD_BUILDER.words;
+        this.targetWord = this.wordsList[Math.floor(Math.random() * this.wordsList.length)];
+        this.currentSelection = "";
 
-        // Fondo premium verde/corporativo de éxito
-        this.bg = this.add.graphics();
-        this.bg.fillGradientStyle(0x0f172a, 0x0f172a, 0x064e3b, 0x064e3b, 1);
-        this.bg.fillRect(0, 0, 1024, 768);
+        // Mezclar las letras
+        this.scrambledLetters = this.targetWord.split('').sort(() => Math.random() - 0.5);
 
-        // Envío de Datos al Google Sheet en Segundo Plano
-        this.isSending = true;
-        this.loadingText = this.add.text(512, 600, 'Guardando tu registro...', {
-            fontFamily: 'Outfit',
-            fontSize: '18px',
-            color: '#a7f3d0'
+        this.add.text(512, 80, 'Arma la Palabra Clave', {
+            fontFamily: 'Comfortaa',
+            fontSize: '38px',
+            color: '#2AAD9A',
+            fontWeight: 'bold'
         }).setOrigin(0.5);
 
-        window.API.sendGameData(window.userData)
-            .then(res => {
-                console.log("[EndScene] Registro guardado con éxito:", res);
-                this.loadingText.setText('✓ Registro exitoso en la base de datos corporativa.');
-                this.loadingText.setColor('#10b981');
-            })
-            .catch(err => {
-                console.error("[EndScene] Error de conexión:", err);
-                this.loadingText.setText('⚠ Guardado localmente. Revise la conexión de la API.');
-                this.loadingText.setColor('#ef4444');
+        this.add.text(512, 130, 'Toca las letras en el orden correcto para revelar la palabra de hoy', {
+            fontFamily: 'Raleway',
+            fontSize: '18px',
+            color: '#666666'
+        }).setOrigin(0.5);
+
+        // Display de Palabra Actual
+        this.wordDisplay = this.add.text(512, 220, '_ '.repeat(this.targetWord.length), {
+            fontFamily: 'Comfortaa',
+            fontSize: '48px',
+            color: '#333333',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+
+        this.letterButtons = [];
+        this.createLetterPool();
+
+        // Botón de Borrar / Limpiar
+        this.createResetBtn();
+    }
+
+    createLetterPool() {
+        const startX = 512 - ((this.scrambledLetters.length - 1) * 45);
+        this.scrambledLetters.forEach((letter, idx) => {
+            const x = startX + (idx * 90);
+            const y = 400;
+
+            const container = this.add.container(x, y);
+
+            const circle = this.add.graphics();
+            circle.fillStyle(0xffffff, 1).fillCircle(0, 0, 36);
+            circle.lineStyle(3, 0x2AAD9A).strokeCircle(0, 0, 36);
+            container.add(circle);
+
+            const txt = this.add.text(0, 0, letter, {
+                fontFamily: 'Comfortaa',
+                fontSize: '32px',
+                color: '#2AAD9A',
+                fontWeight: 'bold'
+            }).setOrigin(0.5);
+            container.add(txt);
+
+            circle.setInteractive(new Phaser.Geom.Circle(0, 0, 36), Phaser.Geom.Circle.Contains);
+
+            circle.on('pointerdown', () => {
+                if (circle.alpha < 0.5) return; // Ya usada
+                SoundSynth.playSelect();
+                
+                circle.setAlpha(0.2);
+                txt.setAlpha(0.2);
+                
+                this.currentSelection += letter;
+                this.updateDisplay();
+                this.checkWord();
             });
 
-        // Mensaje de Logro
-        this.titleText = this.add.text(512, 200, '¡Tu hogar está a salvo!', {
-            fontFamily: 'Outfit',
-            fontSize: '52px',
-            fontWeight: '800',
-            color: '#10b981'
+            this.letterButtons.push({ container, circle, txt, letter });
+        });
+    }
+
+    createResetBtn() {
+        this.resetBtn = this.add.container(512, 540);
+        const bg = this.add.graphics();
+        bg.fillStyle(0xEF607A, 1).fillRoundedRect(-100, -24, 200, 48, 12);
+        this.resetBtn.add(bg);
+
+        const txt = this.add.text(0, 0, 'BORRAR TODO', {
+            fontFamily: 'Comfortaa',
+            fontSize: '18px',
+            color: '#ffffff',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+        this.resetBtn.add(txt);
+
+        bg.setInteractive(new Phaser.Geom.Rectangle(-100, -24, 200, 48), Phaser.Geom.Rectangle.Contains);
+        bg.on('pointerdown', () => {
+            SoundSynth.playError();
+            this.currentSelection = "";
+            this.updateDisplay();
+            
+            // Rehabilitar todas las letras
+            this.letterButtons.forEach(btn => {
+                btn.circle.setAlpha(1);
+                btn.txt.setAlpha(1);
+            });
+        });
+    }
+
+    updateDisplay() {
+        let displayStr = "";
+        for (let i = 0; i < this.targetWord.length; i++) {
+            if (i < this.currentSelection.length) {
+                displayStr += this.currentSelection[i] + " ";
+            } else {
+                displayStr += "_ ";
+            }
+        }
+        this.wordDisplay.setText(displayStr.trim());
+    }
+
+    checkWord() {
+        if (this.currentSelection.length === this.targetWord.length) {
+            if (this.currentSelection === this.targetWord) {
+                SoundSynth.playSuccess();
+                window.userData.gameDetails = `Palabra Armada: ${this.targetWord}`;
+                
+                this.add.text(512, 310, '¡Excelente! Palabra armada con éxito', {
+                    fontFamily: 'Raleway',
+                    fontSize: '22px',
+                    color: '#2AAD9A',
+                    fontWeight: 'bold'
+                }).setOrigin(0.5);
+
+                this.time.delayedCall(1500, () => {
+                    this.scene.start('EndPortalScene');
+                });
+            } else {
+                SoundSynth.playError();
+                // Error de palabra armada incorrecta, reset automático
+                this.time.delayedCall(800, () => {
+                    this.currentSelection = "";
+                    this.updateDisplay();
+                    this.letterButtons.forEach(btn => {
+                        btn.circle.setAlpha(1);
+                        btn.txt.setAlpha(1);
+                    });
+                });
+            }
+        }
+    }
+}
+
+// ==========================================
+// 3. JUEGO: MEMORIA (Memory Match)
+// ==========================================
+class MemoryScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'MemoryScene' });
+    }
+
+    create() {
+        this.moves = 0;
+        this.matchedCount = 0;
+        this.selectedCards = [];
+        this.canPlay = true;
+
+        this.add.text(512, 80, 'Memoria de Saberes', {
+            fontFamily: 'Comfortaa',
+            fontSize: '38px',
+            color: '#2AAD9A',
+            fontWeight: 'bold'
         }).setOrigin(0.5);
 
-        // Subtítulo con branding o reflexión
-        const reflection = window.userData.path === window.CONFIG.PATHS.PATH_1.title 
-            ? 'Has elegido el camino seguro con Protección Vital.' 
-            : 'Has reflexionado: siempre es mejor elegir estar protegido ante emergencias.';
+        this.movesText = this.add.text(512, 130, 'Movimientos: 0', {
+            fontFamily: 'Raleway',
+            fontSize: '20px',
+            color: '#333333'
+        }).setOrigin(0.5);
 
-        this.descText = this.add.text(512, 280, reflection + '\nGracias por ser parte de nuestra iniciativa corporativa.', {
-            fontFamily: 'Outfit',
-            fontSize: '22px',
-            color: '#cbd5e1',
+        // Duplicar y mezclar cartas
+        const items = window.CONFIG.GAMES.MEMORY.items;
+        const deck = [...items, ...items].sort(() => Math.random() - 0.5);
+
+        this.createBoard(deck);
+    }
+
+    createBoard(deck) {
+        const cols = 4;
+        const rows = 4;
+        const cardWidth = 140;
+        const cardHeight = 110;
+        const startX = 512 - ((cols - 1) * (cardWidth + 20)) / 2;
+        const startY = 400 - ((rows - 1) * (cardHeight + 20)) / 2;
+
+        this.cards = [];
+
+        deck.forEach((item, index) => {
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+            const x = startX + col * (cardWidth + 20);
+            const y = startY + row * (cardHeight + 20);
+
+            const card = this.add.container(x, y);
+
+            // Fondo de carta tapada (Reverso con logo minimal)
+            const cardBack = this.add.graphics();
+            cardBack.fillStyle(0x2AAD9A, 1).fillRoundedRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight, 14);
+            cardBack.lineStyle(2, 0xffffff).strokeRoundedRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight, 14);
+            card.add(cardBack);
+
+            const backTxt = this.add.text(0, 0, '?', {
+                fontFamily: 'Comfortaa',
+                fontSize: '32px',
+                color: '#ffffff',
+                fontWeight: 'bold'
+            }).setOrigin(0.5);
+            card.add(backTxt);
+
+            // Frente de la carta (Detalle/Concepto)
+            const cardFront = this.add.container(0, 0).setVisible(false);
+            const frontBg = this.add.graphics();
+            frontBg.fillStyle(0xffffff, 1).fillRoundedRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight, 14);
+            frontBg.lineStyle(3, 0xEDBF6D).strokeRoundedRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight, 14);
+            cardFront.add(frontBg);
+
+            const frontTxt = this.add.text(0, -10, item.label, {
+                fontFamily: 'Raleway',
+                fontSize: '24px'
+            }).setOrigin(0.5);
+            cardFront.add(frontTxt);
+
+            const frontSub = this.add.text(0, 24, item.desc, {
+                fontFamily: 'Comfortaa',
+                fontSize: '14px',
+                color: '#666666',
+                fontWeight: 'bold'
+            }).setOrigin(0.5);
+            cardFront.add(frontSub);
+
+            card.add(cardFront);
+
+            // Interactividad
+            cardBack.setInteractive(new Phaser.Geom.Rectangle(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight), Phaser.Geom.Rectangle.Contains);
+
+            cardBack.on('pointerdown', () => {
+                if (!this.canPlay || this.selectedCards.includes(card) || cardFront.visible) return;
+                SoundSynth.playSelect();
+
+                // Revelar carta
+                cardBack.setVisible(false);
+                backTxt.setVisible(false);
+                cardFront.setVisible(true);
+
+                this.selectedCards.push({ card, item, cardBack, backTxt, cardFront });
+
+                if (this.selectedCards.length === 2) {
+                    this.moves++;
+                    this.movesText.setText(`Movimientos: ${this.moves}`);
+                    this.checkMatch();
+                }
+            });
+        });
+    }
+
+    checkMatch() {
+        this.canPlay = false;
+        const [c1, c2] = this.selectedCards;
+
+        if (c1.item.id === c2.item.id) {
+            // Pareja encontrada
+            SoundSynth.playSuccess();
+            this.matchedCount++;
+            this.selectedCards = [];
+            this.canPlay = true;
+
+            // Animación de acierto
+            this.tweens.add({
+                targets: [c1.card, c2.card],
+                scale: 1.08,
+                duration: 150,
+                yoyo: true
+            });
+
+            if (this.matchedCount === 8) {
+                // Fin de juego
+                window.userData.gameDetails = `Memoria armada en ${this.moves} movimientos`;
+                this.time.delayedCall(1200, () => {
+                    this.scene.start('EndPortalScene');
+                });
+            }
+        } else {
+            // Error
+            this.time.delayedCall(1000, () => {
+                SoundSynth.playError();
+                
+                // Ocultar cartas de nuevo
+                c1.cardFront.setVisible(false);
+                c1.cardBack.setVisible(true);
+                c1.backTxt.setVisible(true);
+
+                c2.cardFront.setVisible(false);
+                c2.cardBack.setVisible(true);
+                c2.backTxt.setVisible(true);
+
+                this.selectedCards = [];
+                this.canPlay = true;
+            });
+        }
+    }
+}
+
+// ==========================================
+// 4. JUEGO: RULETA INTERACTIVA (Spin Wheel)
+// ==========================================
+class WheelScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'WheelScene' });
+    }
+
+    create() {
+        this.prizes = window.CONFIG.GAMES.WHEEL.prizes;
+        this.isSpinning = false;
+
+        this.add.text(512, 80, 'Ruleta del Saber', {
+            fontFamily: 'Comfortaa',
+            fontSize: '38px',
+            color: '#2AAD9A',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+
+        this.add.text(512, 130, '¡Gira la ruleta corporativa para descubrir consejos o ganar premios!', {
+            fontFamily: 'Raleway',
+            fontSize: '18px',
+            color: '#555555'
+        }).setOrigin(0.5);
+
+        // Contenedor de la Ruleta
+        this.wheelContainer = this.add.container(512, 420);
+        this.drawWheel();
+
+        // Indicador (Flecha superior de puntero)
+        const arrow = this.add.graphics();
+        arrow.fillStyle(0xEF607A, 1);
+        arrow.fillTriangle(512, 220, 497, 180, 527, 180);
+        
+        // Botón táctil para girar
+        this.createSpinButton();
+    }
+
+    drawWheel() {
+        const radius = 200;
+        const numSegments = this.prizes.length;
+        const segmentAngle = (2 * Math.PI) / numSegments;
+
+        this.wheelGraphics = this.add.graphics();
+        this.wheelContainer.add(this.wheelGraphics);
+
+        // Colores alternados basados en la guía de estilo
+        const colors = [0x2AAD9A, 0xEDBF6D, 0x59AC9E, 0x3CB99F, 0xEF607A, 0x4aa396];
+
+        for (let i = 0; i < numSegments; i++) {
+            const startAngle = i * segmentAngle;
+            const endAngle = startAngle + segmentAngle;
+
+            // Dibujar sección
+            this.wheelGraphics.fillStyle(colors[i % colors.length], 1);
+            this.wheelGraphics.beginPath();
+            this.wheelGraphics.moveTo(0, 0);
+            this.wheelGraphics.arc(0, 0, radius, startAngle, endAngle);
+            this.wheelGraphics.closePath();
+            this.wheelGraphics.fill();
+
+            // Dibujar borde blanco de la sección
+            this.wheelGraphics.lineStyle(3, 0xffffff, 1);
+            this.wheelGraphics.beginPath();
+            this.wheelGraphics.moveTo(0, 0);
+            this.wheelGraphics.lineTo(radius * Math.cos(startAngle), radius * Math.sin(startAngle));
+            this.wheelGraphics.stroke();
+
+            // Texto descriptivo en la sección (Rotado e inclinado al centro)
+            const textAngle = startAngle + (segmentAngle / 2);
+            const textX = (radius * 0.65) * Math.cos(textAngle);
+            const textY = (radius * 0.65) * Math.sin(textAngle);
+
+            const txt = this.add.text(textX, textY, this.prizes[i], {
+                fontFamily: 'Comfortaa',
+                fontSize: '14px',
+                color: '#ffffff',
+                fontWeight: 'bold',
+                align: 'center',
+                wordWrap: { width: 90 }
+            }).setOrigin(0.5);
+            txt.setRotation(textAngle);
+            this.wheelContainer.add(txt);
+        }
+
+        // Borde exterior
+        this.wheelGraphics.lineStyle(6, 0xffffff, 1);
+        this.wheelGraphics.strokeCircle(0, 0, radius);
+    }
+
+    createSpinButton() {
+        this.spinBtn = this.add.container(512, 420);
+        const bg = this.add.graphics();
+        bg.fillStyle(0xffffff, 1).fillCircle(0, 0, 45);
+        bg.lineStyle(4, 0x2AAD9A).strokeCircle(0, 0, 45);
+        this.spinBtn.add(bg);
+
+        const txt = this.add.text(0, 0, 'GIRAR', {
+            fontFamily: 'Comfortaa',
+            fontSize: '16px',
+            color: '#2AAD9A',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+        this.spinBtn.add(txt);
+
+        bg.setInteractive(new Phaser.Geom.Circle(0, 0, 45), Phaser.Geom.Circle.Contains);
+        bg.on('pointerdown', () => {
+            if (this.isSpinning) return;
+            this.spin();
+        });
+    }
+
+    spin() {
+        this.isSpinning = true;
+        SoundSynth.playSelect();
+
+        // Determinar premio al azar
+        const totalPrizes = this.prizes.length;
+        const targetIndex = Math.floor(Math.random() * totalPrizes);
+        
+        // Calcular la rotación requerida para detenerse en el premio
+        // 0 radianes está al este. Nuestra flecha está al norte (-PI/2 o 270 grados)
+        const prizeAngle = (targetIndex * 360) / totalPrizes;
+        const arrowCorrection = 270;
+        const targetRotation = 360 - prizeAngle + arrowCorrection + (360 * 5); // Al menos 5 vueltas completas
+
+        this.tweens.add({
+            targets: this.wheelContainer,
+            angle: targetRotation,
+            duration: 4000,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                this.isSpinning = false;
+                SoundSynth.playSuccess();
+
+                const prizeWon = this.prizes[targetIndex];
+                window.userData.gameDetails = `Obtenido en Ruleta: ${prizeWon}`;
+
+                this.add.text(512, 660, `¡Ganaste: ${prizeWon}!`, {
+                    fontFamily: 'Comfortaa',
+                    fontSize: '24px',
+                    color: '#EF607A',
+                    fontWeight: 'bold'
+                }).setOrigin(0.5);
+
+                this.time.delayedCall(1800, () => {
+                    this.scene.start('EndPortalScene');
+                });
+            }
+        });
+    }
+}
+
+// ==========================================
+// 5. ESCENA DE FIN DE JUEGO UNIFICADA
+// ==========================================
+class EndPortalScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'EndPortalScene' });
+    }
+
+    create() {
+        // Calcular Duración
+        if (window.userData) {
+            window.userData.duration = Math.round((Date.now() - window.userData.startTime) / 1000);
+        }
+
+        // Fondo degradado
+        const bg = this.add.graphics();
+        bg.fillGradientStyle(0xF5F7F6, 0xF5F7F6, 0xD4EDE9, 0xD4EDE9, 1);
+        bg.fillRect(0, 0, 1024, 768);
+
+        this.add.text(512, 160, '¡Felicidades, Completado!', {
+            fontFamily: 'Comfortaa',
+            fontSize: '48px',
+            color: '#2AAD9A',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+
+        const detailsStr = window.userData ? `${window.userData.gameSelected}\n(${window.userData.gameDetails})` : 'Partida completada';
+        this.add.text(512, 260, detailsStr, {
+            fontFamily: 'Raleway',
+            fontSize: '24px',
+            color: '#333333',
             align: 'center',
             lineSpacing: 10
         }).setOrigin(0.5);
 
-        // Decoración - Icono de Casa Protegida
-        const houseG = this.add.graphics();
-        houseG.fillStyle(0x10b981, 0.2);
-        houseG.fillCircle(512, 430, 80);
-        
-        houseG.fillStyle(0x10b981, 1);
-        houseG.fillRect(472, 410, 80, 60);
-        houseG.fillTriangle(462, 410, 562, 410, 512, 375);
-        houseG.fillStyle(0x0f172a, 1);
-        houseG.fillRect(497, 435, 30, 35);
+        // Envío asíncrono
+        this.statusText = this.add.text(512, 420, 'Guardando registro en Google Sheets...', {
+            fontFamily: 'Raleway',
+            fontSize: '18px',
+            color: '#2AAD9A'
+        }).setOrigin(0.5);
 
-        // Botón "Volver a Jugar"
-        this.createRestartButton(512, 670);
+        window.API.sendGameData(window.userData)
+            .then(res => {
+                this.statusText.setText('✓ Datos guardados exitosamente. ¡Gracias por participar!');
+                this.statusText.setColor('#2AAD9A');
+            })
+            .catch(err => {
+                this.statusText.setText('⚠ Conexión local activa. Registro almacenado en consola.');
+                this.statusText.setColor('#EF607A');
+            });
+
+        // Botón "Ir al Lobby / Jugar Otro"
+        this.createLobbyButton(360, 580);
+        
+        // Botón "Salir / Registrar Otro"
+        this.createExitButton(664, 580);
     }
 
-    createRestartButton(x, y) {
-        const width = 280;
-        const height = 60;
-
+    createLobbyButton(x, y) {
         const container = this.add.container(x, y);
-
         const bg = this.add.graphics();
-        bg.fillStyle(0x10b981, 1);
-        bg.fillRoundedRect(-width/2, -height/2, width, height, 16);
+        bg.fillStyle(0x2AAD9A, 1).fillRoundedRect(-140, -26, 280, 52, 14);
         container.add(bg);
 
-        const text = this.add.text(0, 0, 'VOLVER A JUGAR', {
-            fontFamily: 'Outfit',
-            fontSize: '20px',
-            fontWeight: '600',
-            color: '#ffffff'
+        const txt = this.add.text(0, 0, 'JUGAR OTRO JUEGO', {
+            fontFamily: 'Comfortaa',
+            fontSize: '18px',
+            color: '#ffffff',
+            fontWeight: 'bold'
         }).setOrigin(0.5);
-        container.add(text);
+        container.add(txt);
 
-        const hitArea = new Phaser.Geom.Rectangle(-width/2, -height/2, width, height);
-        bg.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
-
-        bg.on('pointerover', () => {
-            this.tweens.add({
-                targets: container,
-                scaleX: 1.05,
-                scaleY: 1.05,
-                duration: 150
-            });
-        });
-
-        bg.on('pointerout', () => {
-            this.tweens.add({
-                targets: container,
-                scaleX: 1.0,
-                scaleY: 1.0,
-                duration: 150
-            });
-        });
-
+        bg.setInteractive(new Phaser.Geom.Rectangle(-140, -26, 280, 52), Phaser.Geom.Rectangle.Contains);
         bg.on('pointerdown', () => {
             SoundSynth.playSelect();
-            this.cameras.main.fadeOut(500);
+            this.cameras.main.fadeOut(300);
             this.cameras.main.once('camerafadeoutcomplete', () => {
-                // Limpiar registro
+                this.scene.stop();
+                window.showLobby();
+            });
+        });
+    }
+
+    createExitButton(x, y) {
+        const container = this.add.container(x, y);
+        const bg = this.add.graphics();
+        bg.fillStyle(0xEF607A, 1).fillRoundedRect(-140, -26, 280, 52, 14);
+        container.add(bg);
+
+        const txt = this.add.text(0, 0, 'REGISTRAR NUEVO', {
+            fontFamily: 'Comfortaa',
+            fontSize: '18px',
+            color: '#ffffff',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+        container.add(txt);
+
+        bg.setInteractive(new Phaser.Geom.Rectangle(-140, -26, 280, 52), Phaser.Geom.Rectangle.Contains);
+        bg.on('pointerdown', () => {
+            SoundSynth.playSelect();
+            this.cameras.main.fadeOut(300);
+            this.cameras.main.once('camerafadeoutcomplete', () => {
+                this.scene.stop();
+                // Limpiar registro completo
                 window.userData = null;
-                // Volver a mostrar pantalla de registro HTML
                 document.getElementById('reg-name').value = '';
                 document.getElementById('reg-email').value = '';
                 document.getElementById('reg-phone').value = '';
                 document.getElementById('register-screen').classList.remove('hidden');
-
-                // Reiniciar el juego de Phaser a la escena inicial
-                this.scene.start('SelectionScene');
             });
         });
     }
 }
 
-// Inicialización de la Instancia de Juego de Phaser
-const config = {
+// Configuración general del motor Phaser
+const phaserConfig = {
     type: Phaser.AUTO,
     width: window.CONFIG.GAME.width,
     height: window.CONFIG.GAME.height,
     parent: window.CONFIG.GAME.parent,
     backgroundColor: window.CONFIG.GAME.backgroundColor,
-    physics: {
-        default: 'arcade',
-        arcade: {
-            debug: false
-        }
-    },
-    scene: [SelectionScene, GameScene, EndScene]
+    scene: [SelectionScene, GameScene, WordScene, MemoryScene, WheelScene, EndPortalScene]
 };
 
-window.gameInstance = new Phaser.Game(config);
+window.gameInstance = new Phaser.Game(phaserConfig);
