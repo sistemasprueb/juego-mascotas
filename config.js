@@ -5,7 +5,7 @@
 
 const CONFIG = {
     // API Web App de Google Apps Script (Reemplazar con la URL desplegada)
-    API_URL: "", 
+    API_URL: "https://script.google.com/macros/s/AKfycbwqimJbv0vVeg8mrJJXIpO_-8X7e1JaqUa6qYrcR9jqZ6E-44Cc4Yx5uzgHmsb4OAFQKw/exec", 
 
     // Configuración del juego
     GAME: {
