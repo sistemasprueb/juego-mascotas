@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Recorrido Interactivo Mascotas - Evento Corporativo</title>
-    <meta name="description" content="Juego interactivo de mascotas para concientización sobre previsión y protección vital.">
+    <title>Comunidad del Conocimiento - Portal Multijuegos</title>
+    <meta name="description" content="Portal multijuegos corporativo interactivo sobre previsión, conocimiento y bienestar.">
     <link rel="stylesheet" href="style.css">
     
     <!-- Phaser.js CDN -->
@@ -21,26 +21,26 @@
         <div id="loader-screen" class="ui-overlay">
             <div class="card">
                 <div class="logo-container">
-                    <div class="logo-placeholder">🐾</div>
+                    <img class="logo-img" src="https://comunidadconocimiento.co/wp-content/uploads/2023/04/Logo-comunidad-del-conocimiento-scaled.webp" alt="Comunidad del Conocimiento Logo">
                 </div>
-                <h1>Cargando Experiencia</h1>
-                <p class="subtitle">Preparando el recorrido interactivo corporativo...</p>
+                <h1>Portal Multijuegos</h1>
+                <p class="subtitle">Preparando la experiencia interactiva corporativa...</p>
                 <div class="loader-bar-container">
                     <div id="loader-progress" class="loader-bar"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Pantalla de Registro de Participante (Antes del inicio) -->
+        <!-- Pantalla de Registro de Participante -->
         <div id="register-screen" class="ui-overlay hidden">
             <div class="card">
                 <div class="logo-container">
-                    <div class="logo-placeholder">🏠</div>
+                    <img class="logo-img" src="https://comunidadconocimiento.co/wp-content/uploads/2023/04/Logo-comunidad-del-conocimiento-scaled.webp" alt="Comunidad del Conocimiento Logo">
                 </div>
                 <h1>Registro de Participante</h1>
-                <p class="subtitle">Ingresa tus datos para iniciar el viaje de tu mascota</p>
+                <p class="subtitle">Regístrate para comenzar a jugar y aprender</p>
                 
-                <form id="register-form" onsubmit="event.preventDefault(); startRegistration();">
+                <form id="register-form" onsubmit="event.preventDefault(); submitRegistration();">
                     <div class="form-group">
                         <label for="reg-name">Nombre Completo</label>
                         <input type="text" id="reg-name" class="input-control" required placeholder="Ej. Juan Pérez">
@@ -53,8 +53,46 @@
                         <label for="reg-phone">Teléfono de Contacto</label>
                         <input type="tel" id="reg-phone" class="input-control" required placeholder="Ej. +57 300 123 4567">
                     </div>
-                    <button type="submit" class="btn-primary" id="btn-submit-reg">Comenzar Aventura</button>
+                    <button type="submit" class="btn-primary" id="btn-submit-reg">Siguiente</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Pantalla de Selección de Juegos (Lobby) -->
+        <div id="lobby-screen" class="ui-overlay hidden">
+            <div class="card lobby-card">
+                <div class="logo-container">
+                    <img class="logo-img" src="https://comunidadconocimiento.co/wp-content/uploads/2023/04/Logo-comunidad-del-conocimiento-scaled.webp" alt="Comunidad del Conocimiento Logo">
+                </div>
+                <h1>Selecciona tu Juego</h1>
+                <p class="subtitle">Elige una de nuestras dinámicas interactivas</p>
+
+                <div class="games-grid">
+                    <!-- Juego 1: Camino Seguro -->
+                    <div class="game-select-card" onclick="selectGame('PETS', 'SelectionScene')">
+                        <div class="game-icon">🐾</div>
+                        <h3>Camino Seguro</h3>
+                        <p>Ayuda a tu mascota a llegar segura a su hogar.</p>
+                    </div>
+                    <!-- Juego 2: Armar Palabras -->
+                    <div class="game-select-card" onclick="selectGame('WORD_BUILDER', 'WordScene')">
+                        <div class="game-icon">📝</div>
+                        <h3>Armar Palabras</h3>
+                        <p>Ordena las letras para formar conceptos clave.</p>
+                    </div>
+                    <!-- Juego 3: Memoria -->
+                    <div class="game-select-card" onclick="selectGame('MEMORY', 'MemoryScene')">
+                        <div class="game-icon">🧠</div>
+                        <h3>Memoria de Saberes</h3>
+                        <p>Encuentra parejas en el menor tiempo posible.</p>
+                    </div>
+                    <!-- Juego 4: Ruleta -->
+                    <div class="game-select-card" onclick="selectGame('WHEEL', 'WheelScene')">
+                        <div class="game-icon">🎡</div>
+                        <h3>Ruleta del Saber</h3>
+                        <p>Gira la ruleta y descubre tips o premios.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -67,44 +105,71 @@
     <script>
         // Control de interfaces HTML
         window.addEventListener('load', () => {
-            // Simular carga de recursos iniciales rápidamente
             const progress = document.getElementById('loader-progress');
             let width = 0;
             const interval = setInterval(() => {
-                width += 10;
+                width += 15;
+                if (width > 100) width = 100;
                 progress.style.width = width + '%';
                 if (width >= 100) {
                     clearInterval(interval);
-                    // Ocultamos loader y mostramos registro
                     document.getElementById('loader-screen').classList.add('hidden');
                     document.getElementById('register-screen').classList.remove('hidden');
                 }
-            }, 100);
+            }, 80);
         });
 
-        function startRegistration() {
+        function submitRegistration() {
             const name = document.getElementById('reg-name').value;
             const email = document.getElementById('reg-email').value;
             const phone = document.getElementById('reg-phone').value;
 
-            // Almacenar temporalmente los datos del participante
+            // Guardar datos base del usuario
             window.userData = {
                 name: name,
                 email: email,
                 phone: phone,
-                avatar: '',
-                path: '',
+                gameSelected: '',
+                gameDetails: '',
                 duration: 0,
                 startTime: Date.now()
             };
 
-            // Ocultar pantalla de registro
+            // Mostrar el Lobby de selección de juegos
             document.getElementById('register-screen').classList.add('hidden');
-            
-            // Iniciar el juego en Phaser (o notificar que empiece)
+            document.getElementById('lobby-screen').classList.remove('hidden');
+        }
+
+        function selectGame(gameKey, initialScene) {
+            // Registrar juego seleccionado
+            window.userData.gameSelected = CONFIG.GAMES[gameKey].name;
+            window.userData.startTime = Date.now(); // Reiniciar cronómetro para la partida del juego
+
+            // Ocultar lobby HTML
+            document.getElementById('lobby-screen').classList.add('hidden');
+
+            // Lanzar Phaser con la escena correcta
             if (window.gameInstance) {
-                window.gameInstance.scene.keys['SelectionScene'].startSelection();
+                // Detener escenas activas
+                window.gameInstance.scene.scenes.forEach(scene => {
+                    if (scene.scene.key !== 'BootLoader') {
+                        window.gameInstance.scene.stop(scene.scene.key);
+                    }
+                });
+                
+                // Iniciar escena seleccionada
+                window.gameInstance.scene.start(initialScene);
             }
+        }
+
+        function showLobby() {
+            // Reiniciar campos de datos de partida (manteniendo el registro del participante)
+            if (window.userData) {
+                window.userData.gameSelected = '';
+                window.userData.gameDetails = '';
+                window.userData.duration = 0;
+            }
+            document.getElementById('lobby-screen').classList.remove('hidden');
         }
     </script>
 </body>
