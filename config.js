@@ -51,11 +51,11 @@ const CONFIG = {
             name: "Armar Palabras",
             description: "Ordena las letras para formar palabras corporativas clave antes de que se acabe el tiempo.",
             words: [
-                "CONOCIMIENTO",
-                "BIENESTAR",
-                "PROTECCION",
-                "COMUNIDAD",
-                "PREVISION"
+                { word: "CONOCIMIENTO", hint: "Pista: Lo que compartimos y construimos en nuestra comunidad" },
+                { word: "BIENESTAR", hint: "Pista: Estado de satisfacción, salud y tranquilidad" },
+                { word: "PROTECCION", hint: "Pista: Cuidado preventivo para tu hogar y familia" },
+                { word: "COMUNIDAD", hint: "Pista: Grupo de personas que comparten un mismo propósito" },
+                { word: "PREVISION", hint: "Pista: Acción de anticiparse y asegurar tu futuro en vida" }
             ]
         },
         MEMORY: {
