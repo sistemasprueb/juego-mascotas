@@ -79,6 +79,45 @@ const SoundSynth = {
     }
 };
 
+/**
+ * Agrega un botón de retorno al lobby (Menú Principal) en la parte superior izquierda de la escena.
+ */
+function createBackButton(scene, x = 90, y = 45) {
+    const container = scene.add.container(x, y);
+
+    const bg = scene.add.graphics();
+    bg.fillStyle(0xEF607A, 1); // Color de acento para notificaciones/atención
+    bg.fillRoundedRect(-60, -18, 120, 36, 10);
+    container.add(bg);
+
+    const txt = scene.add.text(0, 0, '← VOLVER', {
+        fontFamily: 'Comfortaa',
+        fontSize: '13px',
+        color: '#ffffff',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    container.add(txt);
+
+    bg.setInteractive(new Phaser.Geom.Rectangle(-60, -18, 120, 36), Phaser.Geom.Rectangle.Contains);
+
+    bg.on('pointerdown', () => {
+        SoundSynth.playSelect();
+        scene.cameras.main.fadeOut(300);
+        scene.cameras.main.once('camerafadeoutcomplete', () => {
+            scene.scene.stop(scene.scene.key);
+            window.showLobby();
+        });
+    });
+
+    bg.on('pointerover', () => {
+        scene.tweens.add({ targets: container, scale: 1.05, duration: 100 });
+    });
+
+    bg.on('pointerout', () => {
+        scene.tweens.add({ targets: container, scale: 1.0, duration: 100 });
+    });
+}
+
 // ==========================================
 // 1. JUEGO: CAMINO SEGURO (Mascotas)
 // ==========================================
@@ -89,6 +128,9 @@ class SelectionScene extends Phaser.Scene {
 
     create() {
         this.isActive = true;
+
+        // Botón de Volver al Menú
+        createBackButton(this);
 
         this.add.text(512, 80, 'Elige tu Mascota', {
             fontFamily: 'Comfortaa',
@@ -176,7 +218,6 @@ class SelectionScene extends Phaser.Scene {
             this.isActive = false;
             SoundSynth.playSelect();
             
-            // Guardar avatar
             window.userData.gameDetails = `Avatar: ${name}`;
 
             this.tweens.add({
@@ -208,6 +249,9 @@ class GameScene extends Phaser.Scene {
         this.add.graphics().fillGradientStyle(0xF5F7F6, 0xF5F7F6, 0xD4EDE9, 0xD4EDE9, 1).fillRect(0, 0, 1024, 768);
         this.add.graphics().fillStyle(0x3CB99F, 1).fillRect(0, 500, 1024, 268);
 
+        // Botón de Volver al Menú
+        createBackButton(this);
+
         // Casa
         this.house = this.add.container(900, 440);
         const hg = this.add.graphics();
@@ -230,7 +274,6 @@ class GameScene extends Phaser.Scene {
             ease: 'Sine.easeInOut'
         });
 
-        // Avance inicial
         this.tweens.add({
             targets: this.character,
             x: 400,
@@ -248,7 +291,7 @@ class GameScene extends Phaser.Scene {
         const baseColor = this.avatarType === 'dog' ? 0xEDBF6D : 0x59AC9E;
         body.fillStyle(baseColor, 1).fillRoundedRect(-30, -20, 60, 36, 10);
         body.fillCircle(20, -25, 18);
-        body.fillStyle(0x333333, 1).fillCircle(25, -28, 3); // Ojo
+        body.fillStyle(0x333333, 1).fillCircle(25, -28, 3);
         this.character.add(body);
     }
 
@@ -307,7 +350,6 @@ class GameScene extends Phaser.Scene {
             SoundSynth.playSelect();
             window.userData.gameDetails += `, Decisión: ${pathData.title}`;
             
-            // Eliminar paneles
             if (!this.fadeList) this.fadeList = [];
             this.fadeList.push(container);
             
@@ -362,8 +404,14 @@ class WordScene extends Phaser.Scene {
     }
 
     create() {
+        // Botón de Volver al Menú
+        createBackButton(this);
+
         this.wordsList = window.CONFIG.GAMES.WORD_BUILDER.words;
-        this.targetWord = this.wordsList[Math.floor(Math.random() * this.wordsList.length)];
+        const selectedObj = this.wordsList[Math.floor(Math.random() * this.wordsList.length)];
+        this.targetWord = selectedObj.word;
+        this.hint = selectedObj.hint;
+
         this.currentSelection = "";
 
         // Mezclar las letras
@@ -376,14 +424,24 @@ class WordScene extends Phaser.Scene {
             fontWeight: 'bold'
         }).setOrigin(0.5);
 
-        this.add.text(512, 130, 'Toca las letras en el orden correcto para revelar la palabra de hoy', {
+        // Muestra la pista al usuario en pantalla
+        this.add.text(512, 130, this.hint, {
             fontFamily: 'Raleway',
             fontSize: '18px',
+            color: '#EF607A', // Color de acento llamativo
+            fontWeight: '600',
+            align: 'center',
+            wordWrap: { width: 800 }
+        }).setOrigin(0.5);
+
+        this.add.text(512, 175, 'Toca las letras en el orden correcto para revelar la palabra', {
+            fontFamily: 'Raleway',
+            fontSize: '15px',
             color: '#666666'
         }).setOrigin(0.5);
 
         // Display de Palabra Actual
-        this.wordDisplay = this.add.text(512, 220, '_ '.repeat(this.targetWord.length), {
+        this.wordDisplay = this.add.text(512, 240, '_ '.repeat(this.targetWord.length), {
             fontFamily: 'Comfortaa',
             fontSize: '48px',
             color: '#333333',
@@ -421,7 +479,7 @@ class WordScene extends Phaser.Scene {
             circle.setInteractive(new Phaser.Geom.Circle(0, 0, 36), Phaser.Geom.Circle.Contains);
 
             circle.on('pointerdown', () => {
-                if (circle.alpha < 0.5) return; // Ya usada
+                if (circle.alpha < 0.5) return;
                 SoundSynth.playSelect();
                 
                 circle.setAlpha(0.2);
@@ -456,7 +514,6 @@ class WordScene extends Phaser.Scene {
             this.currentSelection = "";
             this.updateDisplay();
             
-            // Rehabilitar todas las letras
             this.letterButtons.forEach(btn => {
                 btn.circle.setAlpha(1);
                 btn.txt.setAlpha(1);
@@ -494,7 +551,6 @@ class WordScene extends Phaser.Scene {
                 });
             } else {
                 SoundSynth.playError();
-                // Error de palabra armada incorrecta, reset automático
                 this.time.delayedCall(800, () => {
                     this.currentSelection = "";
                     this.updateDisplay();
@@ -522,6 +578,9 @@ class MemoryScene extends Phaser.Scene {
         this.selectedCards = [];
         this.canPlay = true;
 
+        // Botón de Volver al Menú
+        createBackButton(this);
+
         this.add.text(512, 80, 'Memoria de Saberes', {
             fontFamily: 'Comfortaa',
             fontSize: '38px',
@@ -535,7 +594,6 @@ class MemoryScene extends Phaser.Scene {
             color: '#333333'
         }).setOrigin(0.5);
 
-        // Duplicar y mezclar cartas
         const items = window.CONFIG.GAMES.MEMORY.items;
         const deck = [...items, ...items].sort(() => Math.random() - 0.5);
 
@@ -560,7 +618,6 @@ class MemoryScene extends Phaser.Scene {
 
             const card = this.add.container(x, y);
 
-            // Fondo de carta tapada (Reverso con logo minimal)
             const cardBack = this.add.graphics();
             cardBack.fillStyle(0x2AAD9A, 1).fillRoundedRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight, 14);
             cardBack.lineStyle(2, 0xffffff).strokeRoundedRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight, 14);
@@ -574,7 +631,6 @@ class MemoryScene extends Phaser.Scene {
             }).setOrigin(0.5);
             card.add(backTxt);
 
-            // Frente de la carta (Detalle/Concepto)
             const cardFront = this.add.container(0, 0).setVisible(false);
             const frontBg = this.add.graphics();
             frontBg.fillStyle(0xffffff, 1).fillRoundedRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight, 14);
@@ -597,14 +653,12 @@ class MemoryScene extends Phaser.Scene {
 
             card.add(cardFront);
 
-            // Interactividad
             cardBack.setInteractive(new Phaser.Geom.Rectangle(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight), Phaser.Geom.Rectangle.Contains);
 
             cardBack.on('pointerdown', () => {
                 if (!this.canPlay || this.selectedCards.includes(card) || cardFront.visible) return;
                 SoundSynth.playSelect();
 
-                // Revelar carta
                 cardBack.setVisible(false);
                 backTxt.setVisible(false);
                 cardFront.setVisible(true);
@@ -625,13 +679,11 @@ class MemoryScene extends Phaser.Scene {
         const [c1, c2] = this.selectedCards;
 
         if (c1.item.id === c2.item.id) {
-            // Pareja encontrada
             SoundSynth.playSuccess();
             this.matchedCount++;
             this.selectedCards = [];
             this.canPlay = true;
 
-            // Animación de acierto
             this.tweens.add({
                 targets: [c1.card, c2.card],
                 scale: 1.08,
@@ -640,18 +692,15 @@ class MemoryScene extends Phaser.Scene {
             });
 
             if (this.matchedCount === 8) {
-                // Fin de juego
                 window.userData.gameDetails = `Memoria armada en ${this.moves} movimientos`;
                 this.time.delayedCall(1200, () => {
                     this.scene.start('EndPortalScene');
                 });
             }
         } else {
-            // Error
             this.time.delayedCall(1000, () => {
                 SoundSynth.playError();
                 
-                // Ocultar cartas de nuevo
                 c1.cardFront.setVisible(false);
                 c1.cardBack.setVisible(true);
                 c1.backTxt.setVisible(true);
@@ -679,6 +728,9 @@ class WheelScene extends Phaser.Scene {
         this.prizes = window.CONFIG.GAMES.WHEEL.prizes;
         this.isSpinning = false;
 
+        // Botón de Volver al Menú
+        createBackButton(this);
+
         this.add.text(512, 80, 'Ruleta del Saber', {
             fontFamily: 'Comfortaa',
             fontSize: '38px',
@@ -692,16 +744,13 @@ class WheelScene extends Phaser.Scene {
             color: '#555555'
         }).setOrigin(0.5);
 
-        // Contenedor de la Ruleta
         this.wheelContainer = this.add.container(512, 420);
         this.drawWheel();
 
-        // Indicador (Flecha superior de puntero)
         const arrow = this.add.graphics();
         arrow.fillStyle(0xEF607A, 1);
         arrow.fillTriangle(512, 220, 497, 180, 527, 180);
         
-        // Botón táctil para girar
         this.createSpinButton();
     }
 
@@ -713,14 +762,12 @@ class WheelScene extends Phaser.Scene {
         this.wheelGraphics = this.add.graphics();
         this.wheelContainer.add(this.wheelGraphics);
 
-        // Colores alternados basados en la guía de estilo
         const colors = [0x2AAD9A, 0xEDBF6D, 0x59AC9E, 0x3CB99F, 0xEF607A, 0x4aa396];
 
         for (let i = 0; i < numSegments; i++) {
             const startAngle = i * segmentAngle;
             const endAngle = startAngle + segmentAngle;
 
-            // Dibujar sección
             this.wheelGraphics.fillStyle(colors[i % colors.length], 1);
             this.wheelGraphics.beginPath();
             this.wheelGraphics.moveTo(0, 0);
@@ -728,14 +775,12 @@ class WheelScene extends Phaser.Scene {
             this.wheelGraphics.closePath();
             this.wheelGraphics.fill();
 
-            // Dibujar borde blanco de la sección
             this.wheelGraphics.lineStyle(3, 0xffffff, 1);
             this.wheelGraphics.beginPath();
             this.wheelGraphics.moveTo(0, 0);
             this.wheelGraphics.lineTo(radius * Math.cos(startAngle), radius * Math.sin(startAngle));
             this.wheelGraphics.stroke();
 
-            // Texto descriptivo en la sección (Rotado e inclinado al centro)
             const textAngle = startAngle + (segmentAngle / 2);
             const textX = (radius * 0.65) * Math.cos(textAngle);
             const textY = (radius * 0.65) * Math.sin(textAngle);
@@ -752,7 +797,6 @@ class WheelScene extends Phaser.Scene {
             this.wheelContainer.add(txt);
         }
 
-        // Borde exterior
         this.wheelGraphics.lineStyle(6, 0xffffff, 1);
         this.wheelGraphics.strokeCircle(0, 0, radius);
     }
@@ -783,15 +827,12 @@ class WheelScene extends Phaser.Scene {
         this.isSpinning = true;
         SoundSynth.playSelect();
 
-        // Determinar premio al azar
         const totalPrizes = this.prizes.length;
         const targetIndex = Math.floor(Math.random() * totalPrizes);
         
-        // Calcular la rotación requerida para detenerse en el premio
-        // 0 radianes está al este. Nuestra flecha está al norte (-PI/2 o 270 grados)
         const prizeAngle = (targetIndex * 360) / totalPrizes;
         const arrowCorrection = 270;
-        const targetRotation = 360 - prizeAngle + arrowCorrection + (360 * 5); // Al menos 5 vueltas completas
+        const targetRotation = 360 - prizeAngle + arrowCorrection + (360 * 5);
 
         this.tweens.add({
             targets: this.wheelContainer,
@@ -829,12 +870,10 @@ class EndPortalScene extends Phaser.Scene {
     }
 
     create() {
-        // Calcular Duración
         if (window.userData) {
             window.userData.duration = Math.round((Date.now() - window.userData.startTime) / 1000);
         }
 
-        // Fondo degradado
         const bg = this.add.graphics();
         bg.fillGradientStyle(0xF5F7F6, 0xF5F7F6, 0xD4EDE9, 0xD4EDE9, 1);
         bg.fillRect(0, 0, 1024, 768);
@@ -855,7 +894,6 @@ class EndPortalScene extends Phaser.Scene {
             lineSpacing: 10
         }).setOrigin(0.5);
 
-        // Envío asíncrono
         this.statusText = this.add.text(512, 420, 'Guardando registro en Google Sheets...', {
             fontFamily: 'Raleway',
             fontSize: '18px',
@@ -872,10 +910,7 @@ class EndPortalScene extends Phaser.Scene {
                 this.statusText.setColor('#EF607A');
             });
 
-        // Botón "Ir al Lobby / Jugar Otro"
         this.createLobbyButton(360, 580);
-        
-        // Botón "Salir / Registrar Otro"
         this.createExitButton(664, 580);
     }
 
@@ -924,7 +959,6 @@ class EndPortalScene extends Phaser.Scene {
             this.cameras.main.fadeOut(300);
             this.cameras.main.once('camerafadeoutcomplete', () => {
                 this.scene.stop();
-                // Limpiar registro completo
                 window.userData = null;
                 document.getElementById('reg-name').value = '';
                 document.getElementById('reg-email').value = '';
